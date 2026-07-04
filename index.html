@@ -3864,6 +3864,11 @@ window._booted=true;
   // Rôles assignables par un Admin normal. Master Admin / Simba ne s'ajoutent QUE par un Master Admin existant (protection anti-auto-promotion).
   const ASSIGNABLE_ROLES = ['utilisateur','technicien_qualite','tl_qualite','manager_qualite','admin'];
   const MASTER_ONLY_ROLES = ['simba','master_admin'];
+  // Tant qu'aucun compte Master Admin n'existe encore dans le registre, n'importe quel Admin
+  // peut attribuer ce rôle (déblocage initial) — dès qu'un Master Admin existe, seul lui peut
+  // ensuite en désigner d'autres (protection anti-escalade).
+  function _hasMasterAdmin(){ return Object.keys(_accounts||{}).some(uid=>(_accounts[uid]||{}).role==='master_admin'); }
+  function _canAssignMasterRoles(){ return _myRole==='master_admin' || (_isAdmin && !_hasMasterAdmin()); }
   const QUALITY_ROLES = [['manager_qualite','Manager Qualité'],['technicien_qualite','Technicien Qualité'],['tl_qualite','TL Qualité'],['utilisateur','Utilisateur']];
   const ROLE_DOT = { manager_qualite:'#67e8f9', technicien_qualite:'#93c5fd', tl_qualite:'#86efac', utilisateur:'#7dd3fc' };
   const MODULES = [['dashboard','Tableau de bord'],['reclamation','Nouvelle réclamation'],['gestion','Gestion'],['rapport','Rapport'],['pareto_nok','Pareto NOK']];
@@ -3890,8 +3895,9 @@ window._booted=true;
     return db.ref('accounts/'+user.uid).once('value').then(snap=>{
       let rec=snap.val();
       if(!rec){
-        const forced = effectiveRole(user.email, null);
-        const role = (forced!=='utilisateur') ? forced : (registryEmpty ? 'master_admin' : 'utilisateur');
+        // Le tout premier compte connecté (registre vide) devient Master Admin, quel que soit
+        // son e-mail — priorité sur le filet de secours ADMIN_EMAILS (qui ne donne que "Admin").
+        const role = registryEmpty ? 'master_admin' : effectiveRole(user.email, null);
         rec={ email:user.email||'', name:(user.displayName||''), role, disabled:false, createdAt:Date.now(), createdBy:'(auto)' };
         try{ db.ref('accounts/'+user.uid).set(rec); }catch(e){}
       }
@@ -3912,7 +3918,7 @@ window._booted=true;
     box.innerHTML = uids.map(uid=>{
       const a=_accounts[uid]||{}; const dis=a.disabled===true;
       const role = effectiveRole(a.email, a.role);
-      const isMasterViewer = _myRole==='master_admin';
+      const isMasterViewer = _canAssignMasterRoles();
       const isSelf = uid===me;
       // Un Master Admin peut réassigner n'importe quel rôle (y compris Master Admin/Simba),
       // sauf changer SON PROPRE rôle de Master Admin (anti-verrouillage). Les autres viewers
@@ -3944,7 +3950,7 @@ window._booted=true;
     const em=(($f('acEmail')||{}).value||'').trim().toLowerCase();
     const pw=(($f('acPass')||{}).value||'');
     const nm=(($f('acName')||{}).value||'').trim();
-    const allowedCreateRoles = (_myRole==='master_admin') ? ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES) : ASSIGNABLE_ROLES;
+    const allowedCreateRoles = _canAssignMasterRoles() ? ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES) : ASSIGNABLE_ROLES;
     const rl=allowedCreateRoles.includes((($f('acRole')||{}).value)) ? $f('acRole').value : 'utilisateur';
     if(!_emailOK(em)){ _acMsg('E-mail invalide.'); return; }
     if(pw.length<6){ _acMsg('Le mot de passe doit faire au moins 6 caractères.'); return; }
@@ -3985,7 +3991,7 @@ window._booted=true;
     const sel=e.target.closest('select[data-acrole]'); if(!sel) return;
     if(!_isAdmin){ _acMsg('Action réservée aux administrateurs.'); renderAccounts(); return; }
     const uid=sel.getAttribute('data-acrole');
-    const isMasterViewer = _myRole==='master_admin';
+    const isMasterViewer = _canAssignMasterRoles();
     const allowedRoles = isMasterViewer ? ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES) : ASSIGNABLE_ROLES;
     if(!allowedRoles.includes(sel.value)){ _acMsg('Seul un Master Admin peut attribuer ce rôle.'); renderAccounts(); return; }
     if(uid===(auth.currentUser&&auth.currentUser.uid) && _myRole==='master_admin' && sel.value!=='master_admin'){
@@ -4008,7 +4014,7 @@ window._booted=true;
   function refreshRoleOptions(){
     const sel=$f('acRole'); if(!sel) return;
     const cur=sel.value;
-    const master = _myRole==='master_admin';
+    const master = _canAssignMasterRoles();
     sel.innerHTML = ASSIGNABLE_ROLES.map(r=>'<option value="'+r+'">'+ROLE_LABELS[r]+'</option>').join('')
       + (master ? MASTER_ONLY_ROLES.map(r=>'<option value="'+r+'">'+ROLE_LABELS[r]+'</option>').join('') : '');
     if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
