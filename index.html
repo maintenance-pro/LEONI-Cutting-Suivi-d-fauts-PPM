@@ -74,13 +74,20 @@
 #acModal .ac-hint{font-size:11px;color:#7d8aa3;margin-top:8px;line-height:1.5}
 #acModal .ac-hint code{background:#0c1322;border:1px solid #1f2b46;border-radius:4px;padding:0 4px}
 #acModal .ac-permtable{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px}
-#acModal .ac-permtable th,#acModal .ac-permtable td{border:1px solid #1f2b46;padding:7px 8px;text-align:center}
-#acModal .ac-permtable th{background:#0c1322;color:#9fb0cc;font-weight:600;font-size:11px}
-#acModal .ac-permtable td:first-child,#acModal .ac-permtable th:first-child{text-align:left;font-weight:600;color:#eef2f9}
-#acModal .ac-permtable select{background:#172238;border:1px solid #2a3650;color:#cdd6e6;border-radius:6px;padding:4px 6px;font-size:11.5px}
-#acModal .ac-permtable select.p-aucun{color:#fb8c98}
-#acModal .ac-permtable select.p-voir{color:#fcd34d}
-#acModal .ac-permtable select.p-modifier{color:#86efac}
+#acModal .ac-permtable th,#acModal .ac-permtable td{border:1px solid #1f2b46;padding:9px 10px;text-align:center}
+#acModal .ac-permtable th{background:#0c1322;color:#9fb0cc;font-weight:600;font-size:11.5px;white-space:nowrap}
+#acModal .ac-permtable td:first-child,#acModal .ac-permtable th:first-child{text-align:left;font-weight:700;color:#eef2f9;white-space:nowrap}
+#acModal .ac-permtable .role-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+#acModal .ac-permtable select{border-radius:7px;padding:5px 8px;font-size:11.5px;font-weight:700;border:1px solid transparent;cursor:pointer;width:100%;appearance:none;text-align:center}
+#acModal .ac-permtable select.p-aucun{background:rgba(248,113,113,.14);color:#fb8c98;border-color:rgba(248,113,113,.35)}
+#acModal .ac-permtable select.p-voir{background:rgba(250,204,21,.14);color:#fcd34d;border-color:rgba(250,204,21,.35)}
+#acModal .ac-permtable select.p-modifier{background:rgba(52,211,153,.14);color:#86efac;border-color:rgba(52,211,153,.35)}
+#acModal .ac-permtable select:disabled{opacity:.55;cursor:not-allowed}
+#acModal .ac-perm-intro{font-size:12px;color:#9fb0cc;line-height:1.7;background:#0c1322;border:1px solid #1f2b46;border-radius:9px;padding:10px 13px;margin-bottom:10px}
+#acModal .ac-perm-intro .pp{font-weight:700;padding:1px 7px;border-radius:5px;white-space:nowrap}
+#acModal .ac-perm-intro .pp.p-aucun{background:rgba(248,113,113,.14);color:#fb8c98}
+#acModal .ac-perm-intro .pp.p-voir{background:rgba(250,204,21,.14);color:#fcd34d}
+#acModal .ac-perm-intro .pp.p-modifier{background:rgba(52,211,153,.14);color:#86efac}
 #acModal .ac-permwrap{overflow-x:auto}
 #acModal .ac-state{font-size:11px;color:#8190a8}
 #acModal .ac-act{display:flex;gap:6px;flex-wrap:wrap}
@@ -915,20 +922,27 @@ body::before{
         </select>
         <button id="acCreate">Créer le compte</button>
       </div>
-      <div class="ac-hint">Les rôles <b>Master Admin</b> et <b>Simba</b> ne se créent pas ici : ce sont des comptes fixes définis dans le code (variables <code>MASTER_ADMIN_EMAILS</code> / <code>SIMBA_EMAILS</code>).</div>
+      <div class="ac-hint" id="acRoleHint">Les rôles <b>Master Admin</b> et <b>Simba</b> ne sont attribuables que par un compte déjà <b>Master Admin</b> (protection contre l'auto-promotion) — modifie le rôle d'un compte existant ci-dessous une fois connecté en Master Admin.</div>
     </div>
 
     <div id="acMsg" class="ac-msg" style="display:none"></div>
 
     <div class="ac-section" id="acPermSection" style="display:none">
-      <div class="ac-st">🛡️ Matrice de permissions <span style="font-weight:400;color:#7d8aa3;font-size:11px">— réservée à Master Admin &amp; Simba</span></div>
+      <div class="ac-st">🛡️ Gestion des accès par rôle <span style="font-weight:400;color:#7d8aa3;font-size:11px">— réservée à Master Admin &amp; Simba</span></div>
+      <div class="ac-perm-intro">
+        Définis pour chaque rôle l'accès à chaque module :
+        <span class="pp p-aucun">🚫 Aucun</span> (masqué) ·
+        <span class="pp p-voir">👁 Lecture</span> (consultation seule, sans modification) ·
+        <span class="pp p-modifier">✏️ Édition</span> (accès complet).<br>
+        <span style="color:#facc15">●</span> Master Admin, <span style="color:#d8b4fe">●</span> Simba et <span style="color:#fb8c98">●</span> Admin ont toujours un accès total (non modifiable). Les changements sont synchronisés en temps réel pour toute l'équipe.
+      </div>
       <div class="ac-permwrap">
         <table class="ac-permtable" id="acPermTable">
-          <thead><tr><th>Rôle</th><th>Tableau de bord</th><th>Nouvelle réclamation</th><th>Gestion</th><th>Rapport</th><th>Pareto NOK</th></tr></thead>
+          <thead><tr><th>Rôle \ Module</th><th>📊 Tableau de bord</th><th>➕ Réclamation</th><th>⚙️ Gestion</th><th>📄 Rapport</th><th>🧵 Pareto NOK</th></tr></thead>
           <tbody id="acPermBody"></tbody>
         </table>
       </div>
-      <div class="ac-hint">Aucun = section masquée pour ce rôle · Voir = consultation seule (actions de création/modification désactivées) · Modifier = accès complet.</div>
+      <div class="ac-hint">🚫 Aucun = module masqué · 👁 Lecture = consultation seule · ✏️ Édition = accès complet.</div>
     </div>
 
     <div class="ac-section">
@@ -3844,20 +3858,20 @@ window._booted=true;
      (/accounts/{uid}) et on désactive l'accès via un drapeau appliqué à la connexion.
      Astuce clé : la création passe par une app Firebase SECONDAIRE pour ne pas
      déconnecter l'administrateur courant. */
-  const ADMIN_EMAILS = ["admin@leoni.com"];   // ← AJOUTE ICI ton e-mail d'admin « racine »
-  const MASTER_ADMIN_EMAILS = ["admin@leoni.com"];  // ← TON compte : accès total, invisible pour tous les autres rôles dans la liste des comptes.
-  const SIMBA_EMAILS = [];  // ← AJOUTE ICI l'e-mail de « Simba » : accès total sauf le Master Admin, peut gérer la matrice de permissions.
+  const ADMIN_EMAILS = ["admin@leoni.com"];   // ← AJOUTE ICI ton e-mail d'admin « racine » (filet de sécurité si le registre est vidé)
   const ROLE_LABELS = { master_admin:'Master Admin', simba:'Simba', admin:'Admin', manager_qualite:'Manager Qualité', technicien_qualite:'Technicien Qualité', tl_qualite:'TL Qualité', utilisateur:'Utilisateur' };
   const ROLE_BADGE  = { master_admin:'master', simba:'simba', admin:'adm', manager_qualite:'manager', technicien_qualite:'tech', tl_qualite:'tl', utilisateur:'usr' };
+  // Rôles assignables par un Admin normal. Master Admin / Simba ne s'ajoutent QUE par un Master Admin existant (protection anti-auto-promotion).
   const ASSIGNABLE_ROLES = ['utilisateur','technicien_qualite','tl_qualite','manager_qualite','admin'];
-  const QUALITY_ROLES = [['manager_qualite','Manager Qualité'],['technicien_qualite','Technicien Qualité'],['tl_qualite','TL Qualité']];
+  const MASTER_ONLY_ROLES = ['simba','master_admin'];
+  const QUALITY_ROLES = [['manager_qualite','Manager Qualité'],['technicien_qualite','Technicien Qualité'],['tl_qualite','TL Qualité'],['utilisateur','Utilisateur']];
+  const ROLE_DOT = { manager_qualite:'#67e8f9', technicien_qualite:'#93c5fd', tl_qualite:'#86efac', utilisateur:'#7dd3fc' };
   const MODULES = [['dashboard','Tableau de bord'],['reclamation','Nouvelle réclamation'],['gestion','Gestion'],['rapport','Rapport'],['pareto_nok','Pareto NOK']];
   function effectiveRole(email, dbRole){
     const e=(email||'').toLowerCase();
-    if(MASTER_ADMIN_EMAILS.includes(e)) return 'master_admin';
-    if(SIMBA_EMAILS.includes(e)) return 'simba';
-    if(ADMIN_EMAILS.includes(e)) return 'admin';
-    return ASSIGNABLE_ROLES.includes(dbRole) ? dbRole : 'utilisateur';
+    if(ADMIN_EMAILS.includes(e) && !dbRole) return 'admin'; // filet de secours uniquement si aucun rôle encore enregistré
+    const all = ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES);
+    return all.includes(dbRole) ? dbRole : 'utilisateur';
   }
   let _isAdmin=false, _myAccount=null, _accounts={}, _myRole='utilisateur', _canEditMatrix=false, _permissions={};
 
@@ -3877,7 +3891,7 @@ window._booted=true;
       let rec=snap.val();
       if(!rec){
         const forced = effectiveRole(user.email, null);
-        const role = (forced!=='utilisateur') ? forced : (registryEmpty ? 'admin' : 'utilisateur');
+        const role = (forced!=='utilisateur') ? forced : (registryEmpty ? 'master_admin' : 'utilisateur');
         rec={ email:user.email||'', name:(user.displayName||''), role, disabled:false, createdAt:Date.now(), createdBy:'(auto)' };
         try{ db.ref('accounts/'+user.uid).set(rec); }catch(e){}
       }
@@ -3898,20 +3912,27 @@ window._booted=true;
     box.innerHTML = uids.map(uid=>{
       const a=_accounts[uid]||{}; const dis=a.disabled===true;
       const role = effectiveRole(a.email, a.role);
-      const locked = (role==='master_admin' || role==='simba'); // rôles fixes, non réattribuables via l'UI
+      const isMasterViewer = _myRole==='master_admin';
+      const isSelf = uid===me;
+      // Un Master Admin peut réassigner n'importe quel rôle (y compris Master Admin/Simba),
+      // sauf changer SON PROPRE rôle de Master Admin (anti-verrouillage). Les autres viewers
+      // (Admin) ne voient/assignent que les rôles de base et ne peuvent pas toucher aux comptes
+      // déjà Master Admin/Simba (protection anti-escalade).
+      const locked = (!isMasterViewer && (role==='master_admin'||role==='simba')) || (isSelf && role==='master_admin');
+      const roleSet = isMasterViewer ? ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES) : ASSIGNABLE_ROLES;
       const badge = '<span class="ac-badge '+(ROLE_BADGE[role]||'usr')+'">'+(ROLE_LABELS[role]||role)+'</span>';
       const roleControl = locked
-        ? badge
+        ? badge+(isSelf&&role==='master_admin'?' <span style="font-size:10px;color:#7d8aa3">(toi — non modifiable ici)</span>':'')
         : badge+'<select data-acrole="'+uid+'" title="Changer le rôle" style="margin-left:6px">'
-          + ASSIGNABLE_ROLES.map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLE_LABELS[r]+'</option>').join('')
+          + roleSet.map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLE_LABELS[r]+'</option>').join('')
           + '</select>';
       return '<div class="ac-row'+(dis?' ac-dis':'')+'">'
-        +'<div class="ac-main"><div class="ac-mail">'+_esc(a.email||'—')+(uid===me?' <span class="ac-you">vous</span>':'')+'</div>'
+        +'<div class="ac-main"><div class="ac-mail">'+_esc(a.email||'—')+(isSelf?' <span class="ac-you">vous</span>':'')+'</div>'
         +'<div class="ac-meta">'+roleControl
         +'<span class="ac-state">'+(dis?'⛔ désactivé':'✅ actif')+'</span></div></div>'
         +'<div class="ac-act">'
         +'<button data-acreset="'+uid+'" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Mot de passe</button>'
-        +(locked?'':'<button data-acdis="'+uid+'" title="Activer / désactiver l’accès">'+(dis?'Activer':'Désactiver')+'</button>'
+        +(isSelf?'':'<button data-acdis="'+uid+'" title="Activer / désactiver l’accès">'+(dis?'Activer':'Désactiver')+'</button>'
           +'<button data-acdel="'+uid+'" class="ac-del" title="Retirer du registre">🗑</button>')
         +'</div></div>';
     }).join('');
@@ -3923,7 +3944,8 @@ window._booted=true;
     const em=(($f('acEmail')||{}).value||'').trim().toLowerCase();
     const pw=(($f('acPass')||{}).value||'');
     const nm=(($f('acName')||{}).value||'').trim();
-    const rl=ASSIGNABLE_ROLES.includes((($f('acRole')||{}).value)) ? $f('acRole').value : 'utilisateur';
+    const allowedCreateRoles = (_myRole==='master_admin') ? ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES) : ASSIGNABLE_ROLES;
+    const rl=allowedCreateRoles.includes((($f('acRole')||{}).value)) ? $f('acRole').value : 'utilisateur';
     if(!_emailOK(em)){ _acMsg('E-mail invalide.'); return; }
     if(pw.length<6){ _acMsg('Le mot de passe doit faire au moins 6 caractères.'); return; }
     const b=$f('acCreate'); if(b){ b.disabled=true; b.textContent='Création…'; } _acMsg('');
@@ -3933,7 +3955,7 @@ window._booted=true;
       const rec={ email:em, name:nm, role:rl, disabled:false, createdAt:Date.now(), createdBy:(auth.currentUser&&auth.currentUser.email)||'' };
       return db.ref('accounts/'+uid).set(rec).then(()=>{ try{ sa.signOut(); }catch(e){} });
     }).then(()=>{
-      _acMsg('Compte créé : '+em+' ('+ROLE_LABELS[rl]+')', true);
+      _acMsg('Compte créé : '+em+' ('+ROLE_LABELS[rl]+'). Mot de passe initial à transmettre : « '+pw+' » — note-le maintenant, il n\'est pas enregistré et ne sera plus jamais affiché ici.', true);
       ['acEmail','acPass','acName'].forEach(id=>{ const el=$f(id); if(el) el.value=''; });
     }).catch(err=>{
       try{ sa.signOut(); }catch(e){}
@@ -3963,7 +3985,14 @@ window._booted=true;
     const sel=e.target.closest('select[data-acrole]'); if(!sel) return;
     if(!_isAdmin){ _acMsg('Action réservée aux administrateurs.'); renderAccounts(); return; }
     const uid=sel.getAttribute('data-acrole');
-    const nv=ASSIGNABLE_ROLES.includes(sel.value) ? sel.value : 'utilisateur';
+    const isMasterViewer = _myRole==='master_admin';
+    const allowedRoles = isMasterViewer ? ASSIGNABLE_ROLES.concat(MASTER_ONLY_ROLES) : ASSIGNABLE_ROLES;
+    if(!allowedRoles.includes(sel.value)){ _acMsg('Seul un Master Admin peut attribuer ce rôle.'); renderAccounts(); return; }
+    if(uid===(auth.currentUser&&auth.currentUser.uid) && _myRole==='master_admin' && sel.value!=='master_admin'){
+      _acMsg('Tu ne peux pas retirer ton propre rôle Master Admin ici (protection anti-verrouillage). Fais-le depuis un autre compte Master Admin.');
+      renderAccounts(); return;
+    }
+    const nv=allowedRoles.includes(sel.value) ? sel.value : 'utilisateur';
     db.ref('accounts/'+uid+'/role').set(nv).then(()=>_acMsg('Rôle mis à jour : '+ROLE_LABELS[nv], true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
   }
 
@@ -3971,11 +4000,21 @@ window._booted=true;
     const np=(($f('acMyPass')||{}).value||'');
     if(np.length<6){ _acMsg('Le nouveau mot de passe doit faire au moins 6 caractères.'); return; }
     const u=auth.currentUser; if(!u) return;
-    u.updatePassword(np).then(()=>{ _acMsg('Votre mot de passe a été changé.', true); const el=$f('acMyPass'); if(el) el.value=''; })
-      .catch(err=>{ _acMsg(err.code==='auth/requires-recent-login' ? 'Pour des raisons de sécurité, déconnecte-toi puis reconnecte-toi avant de changer ton mot de passe.' : ('Erreur : '+(err.code||err.message))); });
+    u.updatePassword(np).then(()=>{
+      _acMsg('Votre mot de passe a été changé.', true); const el=$f('acMyPass'); if(el) el.value='';
+    }).catch(err=>{ _acMsg(err.code==='auth/requires-recent-login' ? 'Pour des raisons de sécurité, déconnecte-toi puis reconnecte-toi avant de changer ton mot de passe.' : ('Erreur : '+(err.code||err.message))); });
   }
 
-  function openAccounts(){ const m=$f('acModal'); if(m){ m.style.display='flex'; renderAccounts(); _acMsg(''); } }
+  function refreshRoleOptions(){
+    const sel=$f('acRole'); if(!sel) return;
+    const cur=sel.value;
+    const master = _myRole==='master_admin';
+    sel.innerHTML = ASSIGNABLE_ROLES.map(r=>'<option value="'+r+'">'+ROLE_LABELS[r]+'</option>').join('')
+      + (master ? MASTER_ONLY_ROLES.map(r=>'<option value="'+r+'">'+ROLE_LABELS[r]+'</option>').join('') : '');
+    if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+    const hint=$f('acRoleHint'); if(hint) hint.style.display = master ? 'none' : '';
+  }
+  function openAccounts(){ const m=$f('acModal'); if(m){ m.style.display='flex'; refreshRoleOptions(); renderAccounts(); _acMsg(''); } }
   function closeAccounts(){ const m=$f('acModal'); if(m) m.style.display='none'; }
   (function wireAccounts(){
     const a=$f('fbAccounts'); if(a) a.addEventListener('click', openAccounts);
@@ -3993,12 +4032,12 @@ window._booted=true;
       const cells = MODULES.map(([mk])=>{
         const val = (_permissions[rk]&&_permissions[rk][mk]) || 'voir';
         return '<td><select data-role="'+rk+'" data-module="'+mk+'" class="p-'+val+'" '+(_canEditMatrix?'':'disabled')+'>'
-          +'<option value="aucun"'+(val==='aucun'?' selected':'')+'>Aucun</option>'
-          +'<option value="voir"'+(val==='voir'?' selected':'')+'>Voir</option>'
-          +'<option value="modifier"'+(val==='modifier'?' selected':'')+'>Modifier</option>'
+          +'<option value="aucun"'+(val==='aucun'?' selected':'')+'>🚫 Aucun</option>'
+          +'<option value="voir"'+(val==='voir'?' selected':'')+'>👁 Lecture</option>'
+          +'<option value="modifier"'+(val==='modifier'?' selected':'')+'>✏️ Édition</option>'
           +'</select></td>';
       }).join('');
-      return '<tr><td>'+rl+'</td>'+cells+'</tr>';
+      return '<tr><td><span class="role-dot" style="background:'+(ROLE_DOT[rk]||'#7dd3fc')+'"></span>'+rl+'</td>'+cells+'</tr>';
     }).join('');
   }
   function _permChange(e){
