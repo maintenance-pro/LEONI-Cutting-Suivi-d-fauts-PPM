@@ -64,8 +64,24 @@
 #acModal .ac-you{font-size:10px;color:#fb5a6a;border:1px solid #fb5a6a;border-radius:5px;padding:0 5px;margin-left:6px;vertical-align:middle}
 #acModal .ac-meta{display:flex;gap:8px;align-items:center;margin-top:3px}
 #acModal .ac-badge{font-size:10px;border-radius:5px;padding:1px 7px;letter-spacing:.4px}
+#acModal .ac-badge.master{background:rgba(250,204,21,.16);color:#facc15;border:1px solid rgba(250,204,21,.45)}
+#acModal .ac-badge.simba{background:rgba(168,85,247,.16);color:#d8b4fe;border:1px solid rgba(168,85,247,.45)}
 #acModal .ac-badge.adm{background:rgba(251,90,106,.15);color:#fb8c98;border:1px solid rgba(251,90,106,.4)}
+#acModal .ac-badge.manager{background:rgba(34,211,238,.14);color:#67e8f9;border:1px solid rgba(34,211,238,.4)}
+#acModal .ac-badge.tech{background:rgba(96,165,250,.14);color:#93c5fd;border:1px solid rgba(96,165,250,.4)}
+#acModal .ac-badge.tl{background:rgba(52,211,153,.14);color:#86efac;border:1px solid rgba(52,211,153,.4)}
 #acModal .ac-badge.usr{background:rgba(56,189,248,.12);color:#7dd3fc;border:1px solid rgba(56,189,248,.35)}
+#acModal .ac-hint{font-size:11px;color:#7d8aa3;margin-top:8px;line-height:1.5}
+#acModal .ac-hint code{background:#0c1322;border:1px solid #1f2b46;border-radius:4px;padding:0 4px}
+#acModal .ac-permtable{width:100%;border-collapse:collapse;margin-top:4px;font-size:12px}
+#acModal .ac-permtable th,#acModal .ac-permtable td{border:1px solid #1f2b46;padding:7px 8px;text-align:center}
+#acModal .ac-permtable th{background:#0c1322;color:#9fb0cc;font-weight:600;font-size:11px}
+#acModal .ac-permtable td:first-child,#acModal .ac-permtable th:first-child{text-align:left;font-weight:600;color:#eef2f9}
+#acModal .ac-permtable select{background:#172238;border:1px solid #2a3650;color:#cdd6e6;border-radius:6px;padding:4px 6px;font-size:11.5px}
+#acModal .ac-permtable select.p-aucun{color:#fb8c98}
+#acModal .ac-permtable select.p-voir{color:#fcd34d}
+#acModal .ac-permtable select.p-modifier{color:#86efac}
+#acModal .ac-permwrap{overflow-x:auto}
 #acModal .ac-state{font-size:11px;color:#8190a8}
 #acModal .ac-act{display:flex;gap:6px;flex-wrap:wrap}
 #acModal .ac-act button{background:#172238;border:1px solid #2a3650;color:#cdd6e6;border-radius:7px;padding:6px 9px;font-size:11.5px;cursor:pointer;white-space:nowrap}
@@ -890,12 +906,30 @@ body::before{
         <input id="acEmail" type="email" placeholder="E-mail (prenom.nom@leoni.com)" autocomplete="off" autocapitalize="off" spellcheck="false">
         <input id="acPass" type="text" placeholder="Mot de passe initial (min. 6)" autocomplete="off">
         <input id="acName" type="text" placeholder="Nom (optionnel)" autocomplete="off">
-        <select id="acRole"><option value="utilisateur">Utilisateur</option><option value="admin">Admin</option></select>
+        <select id="acRole">
+          <option value="utilisateur">Utilisateur</option>
+          <option value="technicien_qualite">Technicien Qualité</option>
+          <option value="tl_qualite">TL Qualité</option>
+          <option value="manager_qualite">Manager Qualité</option>
+          <option value="admin">Admin</option>
+        </select>
         <button id="acCreate">Créer le compte</button>
       </div>
+      <div class="ac-hint">Les rôles <b>Master Admin</b> et <b>Simba</b> ne se créent pas ici : ce sont des comptes fixes définis dans le code (variables <code>MASTER_ADMIN_EMAILS</code> / <code>SIMBA_EMAILS</code>).</div>
     </div>
 
     <div id="acMsg" class="ac-msg" style="display:none"></div>
+
+    <div class="ac-section" id="acPermSection" style="display:none">
+      <div class="ac-st">🛡️ Matrice de permissions <span style="font-weight:400;color:#7d8aa3;font-size:11px">— réservée à Master Admin &amp; Simba</span></div>
+      <div class="ac-permwrap">
+        <table class="ac-permtable" id="acPermTable">
+          <thead><tr><th>Rôle</th><th>Tableau de bord</th><th>Nouvelle réclamation</th><th>Gestion</th><th>Rapport</th><th>Pareto NOK</th></tr></thead>
+          <tbody id="acPermBody"></tbody>
+        </table>
+      </div>
+      <div class="ac-hint">Aucun = section masquée pour ce rôle · Voir = consultation seule (actions de création/modification désactivées) · Modifier = accès complet.</div>
+    </div>
 
     <div class="ac-section">
       <div class="ac-st">👥 Comptes enregistrés</div>
@@ -3607,8 +3641,9 @@ wireChartFilter('chWeek',  ()=>charts.week,  ()=>({d:'day',w:'week',m:'month'}[_
         if(b64){ const bin=atob(b64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
           f.src=URL.createObjectURL(new Blob([bytes],{type:'text/html'})); }
         loaded=true;
+        f.addEventListener('load', ()=>{ if(typeof window.applyPermissionsToUI==='function') window.applyPermissionsToUI(); });
       }catch(e){ try{ window.open('./pareto-nok.html','_blank'); }catch(_){}; return; }
-    }
+    } else if(typeof window.applyPermissionsToUI==='function'){ window.applyPermissionsToUI(); }
     w.style.display='flex'; document.body.style.overflow='hidden';
   }
   function closeNok(){ const w=document.getElementById('nokWin'); if(w) w.style.display='none'; document.body.style.overflow=''; }
@@ -3810,7 +3845,21 @@ window._booted=true;
      Astuce clé : la création passe par une app Firebase SECONDAIRE pour ne pas
      déconnecter l'administrateur courant. */
   const ADMIN_EMAILS = ["admin@leoni.com"];   // ← AJOUTE ICI ton e-mail d'admin « racine »
-  let _isAdmin=false, _myAccount=null, _accounts={};
+  const MASTER_ADMIN_EMAILS = ["admin@leoni.com"];  // ← TON compte : accès total, invisible pour tous les autres rôles dans la liste des comptes.
+  const SIMBA_EMAILS = [];  // ← AJOUTE ICI l'e-mail de « Simba » : accès total sauf le Master Admin, peut gérer la matrice de permissions.
+  const ROLE_LABELS = { master_admin:'Master Admin', simba:'Simba', admin:'Admin', manager_qualite:'Manager Qualité', technicien_qualite:'Technicien Qualité', tl_qualite:'TL Qualité', utilisateur:'Utilisateur' };
+  const ROLE_BADGE  = { master_admin:'master', simba:'simba', admin:'adm', manager_qualite:'manager', technicien_qualite:'tech', tl_qualite:'tl', utilisateur:'usr' };
+  const ASSIGNABLE_ROLES = ['utilisateur','technicien_qualite','tl_qualite','manager_qualite','admin'];
+  const QUALITY_ROLES = [['manager_qualite','Manager Qualité'],['technicien_qualite','Technicien Qualité'],['tl_qualite','TL Qualité']];
+  const MODULES = [['dashboard','Tableau de bord'],['reclamation','Nouvelle réclamation'],['gestion','Gestion'],['rapport','Rapport'],['pareto_nok','Pareto NOK']];
+  function effectiveRole(email, dbRole){
+    const e=(email||'').toLowerCase();
+    if(MASTER_ADMIN_EMAILS.includes(e)) return 'master_admin';
+    if(SIMBA_EMAILS.includes(e)) return 'simba';
+    if(ADMIN_EMAILS.includes(e)) return 'admin';
+    return ASSIGNABLE_ROLES.includes(dbRole) ? dbRole : 'utilisateur';
+  }
+  let _isAdmin=false, _myAccount=null, _accounts={}, _myRole='utilisateur', _canEditMatrix=false, _permissions={};
 
   let _sec=null;
   function _secAuth(){
@@ -3827,8 +3876,9 @@ window._booted=true;
     return db.ref('accounts/'+user.uid).once('value').then(snap=>{
       let rec=snap.val();
       if(!rec){
-        const seed = ADMIN_EMAILS.includes((user.email||'').toLowerCase()) || registryEmpty;
-        rec={ email:user.email||'', name:(user.displayName||''), role:seed?'admin':'utilisateur', disabled:false, createdAt:Date.now(), createdBy:'(auto)' };
+        const forced = effectiveRole(user.email, null);
+        const role = (forced!=='utilisateur') ? forced : (registryEmpty ? 'admin' : 'utilisateur');
+        rec={ email:user.email||'', name:(user.displayName||''), role, disabled:false, createdAt:Date.now(), createdBy:'(auto)' };
         try{ db.ref('accounts/'+user.uid).set(rec); }catch(e){}
       }
       return rec;
@@ -3837,21 +3887,32 @@ window._booted=true;
 
   function renderAccounts(){
     const box=$f('acList'); if(!box) return;
-    const uids=Object.keys(_accounts||{});
+    let uids=Object.keys(_accounts||{});
+    // Le Master Admin est invisible dans la liste pour tout le monde sauf lui-même.
+    if(_myRole!=='master_admin'){
+      uids = uids.filter(uid=>effectiveRole(_accounts[uid].email, _accounts[uid].role)!=='master_admin');
+    }
     if(!uids.length){ box.innerHTML='<div class="ac-empty">Aucun compte enregistré pour l’instant. Crée le premier ci-dessus.</div>'; return; }
     uids.sort((a,b)=>((_accounts[a].email||'').localeCompare(_accounts[b].email||'','fr')));
     const me = auth.currentUser ? auth.currentUser.uid : '';
     box.innerHTML = uids.map(uid=>{
-      const a=_accounts[uid]||{}; const dis=a.disabled===true; const isAdm=a.role==='admin';
+      const a=_accounts[uid]||{}; const dis=a.disabled===true;
+      const role = effectiveRole(a.email, a.role);
+      const locked = (role==='master_admin' || role==='simba'); // rôles fixes, non réattribuables via l'UI
+      const badge = '<span class="ac-badge '+(ROLE_BADGE[role]||'usr')+'">'+(ROLE_LABELS[role]||role)+'</span>';
+      const roleControl = locked
+        ? badge
+        : badge+'<select data-acrole="'+uid+'" title="Changer le rôle" style="margin-left:6px">'
+          + ASSIGNABLE_ROLES.map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLE_LABELS[r]+'</option>').join('')
+          + '</select>';
       return '<div class="ac-row'+(dis?' ac-dis':'')+'">'
         +'<div class="ac-main"><div class="ac-mail">'+_esc(a.email||'—')+(uid===me?' <span class="ac-you">vous</span>':'')+'</div>'
-        +'<div class="ac-meta"><span class="ac-badge '+(isAdm?'adm':'usr')+'">'+(isAdm?'Admin':'Utilisateur')+'</span>'
+        +'<div class="ac-meta">'+roleControl
         +'<span class="ac-state">'+(dis?'⛔ désactivé':'✅ actif')+'</span></div></div>'
         +'<div class="ac-act">'
         +'<button data-acreset="'+uid+'" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Mot de passe</button>'
-        +'<button data-acrole="'+uid+'" title="Basculer Admin / Utilisateur">'+(isAdm?'↘ Utilisateur':'↗ Admin')+'</button>'
-        +'<button data-acdis="'+uid+'" title="Activer / désactiver l’accès">'+(dis?'Activer':'Désactiver')+'</button>'
-        +'<button data-acdel="'+uid+'" class="ac-del" title="Retirer du registre">🗑</button>'
+        +(locked?'':'<button data-acdis="'+uid+'" title="Activer / désactiver l’accès">'+(dis?'Activer':'Désactiver')+'</button>'
+          +'<button data-acdel="'+uid+'" class="ac-del" title="Retirer du registre">🗑</button>')
         +'</div></div>';
     }).join('');
   }
@@ -3862,7 +3923,7 @@ window._booted=true;
     const em=(($f('acEmail')||{}).value||'').trim().toLowerCase();
     const pw=(($f('acPass')||{}).value||'');
     const nm=(($f('acName')||{}).value||'').trim();
-    const rl=(($f('acRole')||{}).value||'utilisateur');
+    const rl=ASSIGNABLE_ROLES.includes((($f('acRole')||{}).value)) ? $f('acRole').value : 'utilisateur';
     if(!_emailOK(em)){ _acMsg('E-mail invalide.'); return; }
     if(pw.length<6){ _acMsg('Le mot de passe doit faire au moins 6 caractères.'); return; }
     const b=$f('acCreate'); if(b){ b.disabled=true; b.textContent='Création…'; } _acMsg('');
@@ -3872,7 +3933,7 @@ window._booted=true;
       const rec={ email:em, name:nm, role:rl, disabled:false, createdAt:Date.now(), createdBy:(auth.currentUser&&auth.currentUser.email)||'' };
       return db.ref('accounts/'+uid).set(rec).then(()=>{ try{ sa.signOut(); }catch(e){} });
     }).then(()=>{
-      _acMsg('Compte créé : '+em+(rl==='admin'?' (Admin)':''), true);
+      _acMsg('Compte créé : '+em+' ('+ROLE_LABELS[rl]+')', true);
       ['acEmail','acPass','acName'].forEach(id=>{ const el=$f(id); if(el) el.value=''; });
     }).catch(err=>{
       try{ sa.signOut(); }catch(e){}
@@ -3888,10 +3949,6 @@ window._booted=true;
     if((uid=t.getAttribute('data-acreset'))){
       const a=_accounts[uid]; if(!a||!a.email) return;
       auth.sendPasswordResetEmail(a.email).then(()=>_acMsg('Lien de réinitialisation envoyé à '+a.email, true)).catch(err=>_acMsg('Échec envoi : '+(err.code||err.message)));
-    } else if((uid=t.getAttribute('data-acrole'))){
-      const a=_accounts[uid]; if(!a) return;
-      const nv=a.role==='admin'?'utilisateur':'admin';
-      db.ref('accounts/'+uid+'/role').set(nv).then(()=>_acMsg('Rôle mis à jour : '+nv, true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
     } else if((uid=t.getAttribute('data-acdis'))){
       const a=_accounts[uid]; if(!a) return;
       const nv=!(a.disabled===true);
@@ -3901,6 +3958,13 @@ window._booted=true;
       if(!confirm("Retirer « "+(a.email||uid)+" » du registre ?\n\nNote : le login Firebase n’est PAS supprimé (l’utilisateur peut encore se connecter). Pour révoquer réellement l’accès, utilise « Désactiver », ou supprime le compte dans la console Firebase.")) return;
       db.ref('accounts/'+uid).remove().then(()=>_acMsg('Compte retiré du registre.', true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
     }
+  }
+  function _acRoleChange(e){
+    const sel=e.target.closest('select[data-acrole]'); if(!sel) return;
+    if(!_isAdmin){ _acMsg('Action réservée aux administrateurs.'); renderAccounts(); return; }
+    const uid=sel.getAttribute('data-acrole');
+    const nv=ASSIGNABLE_ROLES.includes(sel.value) ? sel.value : 'utilisateur';
+    db.ref('accounts/'+uid+'/role').set(nv).then(()=>_acMsg('Rôle mis à jour : '+ROLE_LABELS[nv], true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
   }
 
   function changeMyPassword(){
@@ -3918,9 +3982,74 @@ window._booted=true;
     const x=$f('acClose'); if(x) x.addEventListener('click', closeAccounts);
     const bg=$f('acModal'); if(bg) bg.addEventListener('click', e=>{ if(e.target===bg) closeAccounts(); });
     const c=$f('acCreate'); if(c) c.addEventListener('click', createAccount);
-    const list=$f('acList'); if(list) list.addEventListener('click', _acAction);
+    const list=$f('acList'); if(list){ list.addEventListener('click', _acAction); list.addEventListener('change', _acRoleChange); }
     const mp=$f('acMyBtn'); if(mp) mp.addEventListener('click', changeMyPassword);
+    const pb=$f('acPermBody'); if(pb) pb.addEventListener('change', _permChange);
   })();
+
+  function renderPermMatrix(){
+    const body=$f('acPermBody'); if(!body) return;
+    body.innerHTML = QUALITY_ROLES.map(([rk,rl])=>{
+      const cells = MODULES.map(([mk])=>{
+        const val = (_permissions[rk]&&_permissions[rk][mk]) || 'voir';
+        return '<td><select data-role="'+rk+'" data-module="'+mk+'" class="p-'+val+'" '+(_canEditMatrix?'':'disabled')+'>'
+          +'<option value="aucun"'+(val==='aucun'?' selected':'')+'>Aucun</option>'
+          +'<option value="voir"'+(val==='voir'?' selected':'')+'>Voir</option>'
+          +'<option value="modifier"'+(val==='modifier'?' selected':'')+'>Modifier</option>'
+          +'</select></td>';
+      }).join('');
+      return '<tr><td>'+rl+'</td>'+cells+'</tr>';
+    }).join('');
+  }
+  function _permChange(e){
+    const sel=e.target.closest('select'); if(!sel) return;
+    if(!_canEditMatrix){ _acMsg('Action réservée à Master Admin et Simba.'); renderPermMatrix(); return; }
+    const role=sel.getAttribute('data-role'), mod=sel.getAttribute('data-module'), val=sel.value;
+    sel.className='p-'+val;
+    db.ref('permissions/'+role+'/'+mod).set(val).then(()=>_acMsg('Permission mise à jour.', true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
+  }
+  function watchPermissions(){
+    try{
+      db.ref('permissions').on('value', snap=>{
+        _permissions = snap.val()||{};
+        renderPermMatrix();
+        applyPermissionsToUI();
+      });
+    }catch(e){}
+  }
+  function permFor(module){
+    if(_myRole==='master_admin'||_myRole==='simba'||_myRole==='admin') return 'modifier';
+    if(QUALITY_ROLES.some(([rk])=>rk===_myRole)) return (_permissions[_myRole] && _permissions[_myRole][module]) || 'voir';
+    return 'modifier'; // rôle "utilisateur" hérité : comportement inchangé, non couvert par la matrice
+  }
+  function applyPermissionsToUI(){
+    const navMap = [['nokBtn3','pareto_nok'],['nokBtn2','pareto_nok'],['openMg','gestion'],['printReport','rapport'],['openAdd','reclamation']];
+    navMap.forEach(([id,mod])=>{ const el=$f(id); if(el) el.style.display = permFor(mod)==='aucun' ? 'none' : ''; });
+    const addBtn=$f('openAdd'); if(addBtn){ const p=permFor('reclamation'); addBtn.disabled = p==='voir'; addBtn.title = p==='voir' ? 'Accès en lecture seule — création désactivée pour votre rôle' : ''; }
+    const mgBtn=$f('openMg'); if(mgBtn){ const p=permFor('gestion'); mgBtn.title = p==='voir' ? 'Accès en lecture seule pour votre rôle' : ''; }
+    // Tableau de bord : masque l'ensemble du contenu si "aucun".
+    const wrap=document.querySelector('.wrap');
+    if(wrap){
+      const p=permFor('dashboard');
+      let ph=document.getElementById('dashNoAccessMsg');
+      if(p==='aucun'){
+        wrap.style.display='none';
+        if(!ph){ ph=document.createElement('div'); ph.id='dashNoAccessMsg';
+          ph.style.cssText='max-width:640px;margin:70px auto;text-align:center;color:var(--text-dim,#7d8aa3);font-size:15px;padding:30px;';
+          ph.textContent="Vous n'avez pas accès au tableau de bord. Contactez un administrateur.";
+          wrap.parentNode.insertBefore(ph, wrap);
+        }
+        ph.style.display='block';
+      } else {
+        wrap.style.display='';
+        if(ph) ph.style.display='none';
+      }
+    }
+    // Notifie l'outil Pareto NOK (iframe) de son niveau d'accès.
+    const nf=$f('nokFrame');
+    if(nf && nf.contentWindow){ try{ nf.contentWindow.postMessage({type:'permission', level:permFor('pareto_nok')}, '*'); }catch(e){} }
+  }
+  window.applyPermissionsToUI = applyPermissionsToUI;
 
   function watchAccounts(){
     try{
@@ -3929,8 +4058,11 @@ window._booted=true;
         const u=auth.currentUser;
         if(u){
           _myAccount = _accounts[u.uid] || _myAccount;
-          _isAdmin = ADMIN_EMAILS.includes((u.email||'').toLowerCase()) || (_myAccount && _myAccount.role==='admin') || Object.keys(_accounts).length===0;
+          _myRole = effectiveRole(u.email, _myAccount && _myAccount.role);
+          _isAdmin = (_myRole==='master_admin'||_myRole==='simba'||_myRole==='admin') || Object.keys(_accounts).length===0;
+          _canEditMatrix = (_myRole==='master_admin'||_myRole==='simba');
           const ab=$f('fbAccounts'); if(ab) ab.style.display=_isAdmin?'':'none';
+          const ps=$f('acPermSection'); if(ps) ps.style.display=_canEditMatrix?'':'none';
           // révocation à chaud : si on désactive mon propre compte, je suis déconnecté
           if(_myAccount && _myAccount.disabled===true){ try{ auth.signOut(); }catch(e){} }
         }
@@ -3953,15 +4085,19 @@ window._booted=true;
           try{ auth.signOut(); }catch(e){}
           return;
         }
-        _isAdmin = ADMIN_EMAILS.includes((user.email||'').toLowerCase()) || (rec && rec.role==='admin');
+        _myRole = effectiveRole(user.email, rec && rec.role);
+        _isAdmin = (_myRole==='master_admin'||_myRole==='simba'||_myRole==='admin');
+        _canEditMatrix = (_myRole==='master_admin'||_myRole==='simba');
         const o=$f('fbLogin'); if(o) o.style.display='none';
         const so=$f('fbSignOut'); if(so) so.style.display='';
         const ab=$f('fbAccounts'); if(ab) ab.style.display=_isAdmin?'':'none';
+        const ps=$f('acPermSection'); if(ps) ps.style.display=_canEditMatrix?'':'none';
         startCloud();
         watchAccounts();
+        watchPermissions();
       });
     }else{
-      window._fbReady=false; _isAdmin=false; _myAccount=null;
+      window._fbReady=false; _isAdmin=false; _myAccount=null; _myRole='utilisateur'; _canEditMatrix=false;
       const so=$f('fbSignOut'); if(so) so.style.display='none';
       const ab=$f('fbAccounts'); if(ab) ab.style.display='none';
       const am=$f('acModal'); if(am) am.style.display='none';
