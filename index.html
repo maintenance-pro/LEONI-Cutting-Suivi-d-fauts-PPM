@@ -223,6 +223,14 @@ body{
 .metaitem{text-align:right}
 .metaitem .k{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.13em}
 .metaitem .v{font-size:13px;color:var(--mid)}
+.who-badge{font-size:10px;border-radius:5px;padding:1px 7px;letter-spacing:.4px;font-weight:700}
+.who-badge.master{background:rgba(250,204,21,.16);color:#facc15;border:1px solid rgba(250,204,21,.45)}
+.who-badge.simba{background:rgba(168,85,247,.16);color:#d8b4fe;border:1px solid rgba(168,85,247,.45)}
+.who-badge.adm{background:rgba(251,90,106,.15);color:#fb8c98;border:1px solid rgba(251,90,106,.4)}
+.who-badge.manager{background:rgba(34,211,238,.14);color:#67e8f9;border:1px solid rgba(34,211,238,.4)}
+.who-badge.tech{background:rgba(96,165,250,.14);color:#93c5fd;border:1px solid rgba(96,165,250,.4)}
+.who-badge.tl{background:rgba(52,211,153,.14);color:#86efac;border:1px solid rgba(52,211,153,.4)}
+.who-badge.usr{background:rgba(56,189,248,.12);color:#7dd3fc;border:1px solid rgba(56,189,248,.35)}
 .sys{display:flex;align-items:center;gap:8px;padding:7px 13px;border:1px solid #1c3a30;border-radius:30px;background:rgba(52,211,153,.07)}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -1027,6 +1035,7 @@ body::before{
       <div class="metaitem"><div class="k">Plant</div><div class="v" id="m-plant">—</div></div>
       <div class="metaitem"><div class="k">Période</div><div class="v" id="m-period">—</div></div>
       <div class="metaitem"><div class="k">Mise à jour</div><div class="v" id="m-gen">—</div></div>
+      <div class="metaitem" id="whoBox" style="display:none"><div class="k">Connecté</div><div class="v" id="whoName" style="display:flex;align-items:center;gap:6px;">—</div></div>
       <button class="themetgl" id="pwaBtn" title="Installer l'application (téléphone / PC)" style="display:none"><span class="ic">⬇️</span><span class="tt">Installer</span></button>
       <button class="themetgl" id="densTgl" title="Densité d'affichage — Confort / Compact"><span class="ic">▤</span><span class="tt">Confort</span></button>
       <button class="themetgl" id="themeTgl"><span class="ic">☀️</span><span class="tt">Clair</span></button>
@@ -4121,6 +4130,14 @@ window._booted=true;
   }
   window.applyPermissionsToUI = applyPermissionsToUI;
 
+  function updateWhoBadge(){
+    const box=$f('whoBox'), nm=$f('whoName'); if(!box||!nm) return;
+    const u=auth.currentUser;
+    if(!u){ box.style.display='none'; return; }
+    box.style.display='';
+    nm.innerHTML = '<span>'+_esc(u.email||'')+'</span><span class="who-badge '+(ROLE_BADGE[_myRole]||'usr')+'">'+(ROLE_LABELS[_myRole]||_myRole)+'</span>';
+  }
+
   function watchAccounts(){
     try{
       db.ref('accounts').on('value', snap=>{
@@ -4133,6 +4150,7 @@ window._booted=true;
           _canEditMatrix = (_myRole==='master_admin'||_myRole==='simba');
           const ab=$f('fbAccounts'); if(ab) ab.style.display=_isAdmin?'':'none';
           const ps=$f('acPermSection'); if(ps) ps.style.display=_canEditMatrix?'':'none';
+          updateWhoBadge();
           // révocation à chaud : si on désactive mon propre compte, je suis déconnecté
           if(_myAccount && _myAccount.disabled===true){ try{ auth.signOut(); }catch(e){} }
         }
@@ -4162,6 +4180,7 @@ window._booted=true;
         const so=$f('fbSignOut'); if(so) so.style.display='';
         const ab=$f('fbAccounts'); if(ab) ab.style.display=_isAdmin?'':'none';
         const ps=$f('acPermSection'); if(ps) ps.style.display=_canEditMatrix?'':'none';
+        updateWhoBadge();
         startCloud();
         watchAccounts();
         watchPermissions();
@@ -4172,6 +4191,7 @@ window._booted=true;
       const ab=$f('fbAccounts'); if(ab) ab.style.display='none';
       const am=$f('acModal'); if(am) am.style.display='none';
       const o=$f('fbLogin'); if(o) o.style.display='flex';
+      updateWhoBadge();
       _setDot(false);
     }
   });
