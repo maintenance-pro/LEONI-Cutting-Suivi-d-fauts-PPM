@@ -3888,7 +3888,13 @@ window._booted=true;
     return _sec.auth();
   }
   function _emailOK(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-  function _acMsg(t,ok){ const m=$f('acMsg'); if(m){ m.textContent=t||''; m.className='ac-msg '+(ok?'ok':(t?'err':'')); m.style.display=t?'block':'none'; } }
+  let _acMsgTimer=null;
+  function _acMsg(t,ok){
+    const m=$f('acMsg'); if(!m) return;
+    m.textContent=t||''; m.className='ac-msg '+(ok?'ok':(t?'err':'')); m.style.display=t?'block':'none';
+    if(_acMsgTimer){ clearTimeout(_acMsgTimer); _acMsgTimer=null; }
+    if(t && ok){ _acMsgTimer=setTimeout(()=>{ m.style.display='none'; }, 3500); } // les succès s'effacent seuls ; les erreurs restent visibles
+  }
 
   function ensureSelfAccount(user, registryEmpty){
     return db.ref('accounts/'+user.uid).once('value').then(snap=>{
@@ -3927,14 +3933,17 @@ window._booted=true;
         : badge+'<select data-acrole="'+uid+'" title="Changer le rôle" style="margin-left:6px">'
           + roleSet.map(r=>'<option value="'+r+'"'+(r===role?' selected':'')+'>'+ROLE_LABELS[r]+'</option>').join('')
           + '</select>';
+      const canForce = _canEditMatrix && !(role==='master_admin' && _myRole!=='master_admin');
+      const canManage = !isSelf && (!locked || _myRole==='master_admin');
       return '<div class="ac-row'+(dis?' ac-dis':'')+'">'
         +'<div class="ac-main"><div class="ac-mail">'+_esc(a.email||'—')+(isSelf?' <span class="ac-you">vous</span>':'')+'</div>'
         +'<div class="ac-meta">'+roleControl
         +'<span class="ac-state">'+(dis?'⛔ désactivé':'✅ actif')+'</span></div></div>'
         +'<div class="ac-act">'
         +'<button data-acreset="'+uid+'" title="Envoyer un lien de réinitialisation du mot de passe">🔑 Mot de passe</button>'
-        +(isSelf?'':'<button data-acdis="'+uid+'" title="Activer / désactiver l’accès">'+(dis?'Activer':'Désactiver')+'</button>'
-          +'<button data-acdel="'+uid+'" class="ac-del" title="Retirer du registre">🗑</button>')
+        +(canForce?'<button data-acforce="'+uid+'" data-mail="'+_esc(a.email||'')+'" title="Définir directement un nouveau mot de passe (sans e-mail)">🔒 Forcer un mot de passe</button>':'')
+        +(canManage?'<button data-acdis="'+uid+'" title="Activer / désactiver l’accès">'+(dis?'Activer':'Désactiver')+'</button>'
+          +'<button data-acdel="'+uid+'" class="ac-del" title="Retirer du registre">🗑</button>':'')
         +'</div></div>';
     }).join('');
   }
@@ -3964,6 +3973,34 @@ window._booted=true;
     }).finally(()=>{ const bb=$f('acCreate'); if(bb){ bb.disabled=false; bb.textContent='Créer le compte'; } });
   }
 
+  // ⚠️ Ajuste la région si ta Cloud Function est déployée ailleurs qu'en us-central1
+  // (indiqué à la fin de "firebase deploy" — voir functions/index.js).
+  const FN_REGION = 'us-central1';
+  function forceSetPassword(uid, email){
+    if(!_canEditMatrix){ _acMsg('Action réservée à Master Admin et Simba.'); return; }
+    const pw = prompt('Nouveau mot de passe pour '+(email||'ce compte')+' (min. 6 caractères) :\n\nIl sera appliqué immédiatement — transmets-le ensuite à la personne.');
+    if(pw===null) return; // annulé
+    if(pw.length<6){ _acMsg('Le mot de passe doit faire au moins 6 caractères.'); return; }
+    _acMsg('Application du nouveau mot de passe…');
+    auth.currentUser.getIdToken().then(idToken=>{
+      const url = 'https://'+FN_REGION+'-'+firebaseConfig.projectId+'.cloudfunctions.net/setUserPassword';
+      return fetch(url, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+idToken },
+        body: JSON.stringify({ data:{ uid, newPassword: pw } })
+      }).then(r=>r.json());
+    }).then(json=>{
+      if(json && json.error){
+        const code = json.error.status||'';
+        const M={'PERMISSION_DENIED':'Action refusée par le serveur (droits insuffisants).','NOT_FOUND':'Compte introuvable.','INVALID_ARGUMENT':'Mot de passe invalide (min. 6 caractères).'};
+        _acMsg('Erreur : '+(M[code]||json.error.message||code));
+      } else {
+        _acMsg('Nouveau mot de passe défini pour '+(email||'ce compte')+'.', true);
+      }
+    }).catch(err=>{
+      _acMsg("Échec de connexion à la fonction serveur. Vérifie qu'elle est bien déployée (voir functions/index.js) et que FN_REGION correspond à sa région réelle. Détail : "+err.message);
+    });
+  }
   function _acAction(e){
     const t=e.target.closest('button'); if(!t) return;
     if(!_isAdmin){ _acMsg('Action réservée aux administrateurs.'); return; }
@@ -3971,12 +4008,16 @@ window._booted=true;
     if((uid=t.getAttribute('data-acreset'))){
       const a=_accounts[uid]; if(!a||!a.email) return;
       auth.sendPasswordResetEmail(a.email).then(()=>_acMsg('Lien de réinitialisation envoyé à '+a.email, true)).catch(err=>_acMsg('Échec envoi : '+(err.code||err.message)));
+    } else if((uid=t.getAttribute('data-acforce'))){
+      forceSetPassword(uid, t.getAttribute('data-mail')||'');
     } else if((uid=t.getAttribute('data-acdis'))){
       const a=_accounts[uid]; if(!a) return;
+      if(effectiveRole(a.email,a.role)==='simba' && _myRole!=='master_admin'){ _acMsg('Seul un Master Admin peut désactiver le compte Simba.'); return; }
       const nv=!(a.disabled===true);
       db.ref('accounts/'+uid+'/disabled').set(nv).then(()=>_acMsg(nv?'Accès désactivé (déconnexion au prochain chargement).':'Accès réactivé.', true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
     } else if((uid=t.getAttribute('data-acdel'))){
       const a=_accounts[uid]||{};
+      if(effectiveRole(a.email,a.role)==='simba' && _myRole!=='master_admin'){ _acMsg('Seul un Master Admin peut supprimer le compte Simba.'); return; }
       if(!confirm("Retirer « "+(a.email||uid)+" » du registre ?\n\nNote : le login Firebase n’est PAS supprimé (l’utilisateur peut encore se connecter). Pour révoquer réellement l’accès, utilise « Désactiver », ou supprime le compte dans la console Firebase.")) return;
       db.ref('accounts/'+uid).remove().then(()=>_acMsg('Compte retiré du registre.', true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
     }
@@ -4035,7 +4076,7 @@ window._booted=true;
     if(!_canEditMatrix){ _acMsg('Action réservée à Master Admin et Simba.'); renderPermMatrix(); return; }
     const role=sel.getAttribute('data-role'), mod=sel.getAttribute('data-module'), val=sel.value;
     sel.className='p-'+val;
-    db.ref('permissions/'+role+'/'+mod).set(val).then(()=>_acMsg('Permission mise à jour.', true)).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
+    db.ref('permissions/'+role+'/'+mod).set(val).catch(err=>_acMsg('Erreur : '+(err.code||err.message)));
   }
   function watchPermissions(){
     try{
